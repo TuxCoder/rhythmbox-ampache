@@ -1,4 +1,4 @@
-#summary One-sentence summary of this page.
+#summary List of TODOs and BUGs here until migrated to the Issues Tracker
 
 = Introduction =
 
