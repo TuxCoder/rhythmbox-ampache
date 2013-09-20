@@ -50,7 +50,7 @@ class Ampache(GObject.Object, Peas.Activatable):
                         AmpacheBrowser,
                         shell=shell,
                         entry_type=self.__entry_type,
-                        pixbuf=icon,
+                        icon=icon,
                         plugin=self,
                         settings=settings.get_child("source"),
                         toolbar_menu=menu,
