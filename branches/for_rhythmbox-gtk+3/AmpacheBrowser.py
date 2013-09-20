@@ -56,11 +56,11 @@ class PlaylistsHandler(xml.sax.handler.ContentHandler):
                                         self.__name,
                                         self.__items])
                 elif name == 'name':
-                        self.__name = self.__text.encode('utf-8')
+                        self.__name = self.__text
                 elif name == 'items':
                         self.__items = int(self.__text)
                 elif name == 'owner':
-                        self.__owner = self.__text.encode('utf-8')
+                        self.__owner = self.__text
                 elif name == 'type':
                         self.__type = self.__text
                 else:
@@ -96,17 +96,17 @@ class SongsHandler(xml.sax.handler.ContentHandler):
                                         # add the track to the database if it doesn't exist
                                         entry = self.__db.entry_lookup_by_location(str(self.__url))
                                         if entry == None:
-                                                entry = RB.RhythmDBEntry.new(self.__db, self.__entry_type, str(self.__url))
+                                                entry = RB.RhythmDBEntry.new(self.__db, self.__entry_type, self.__url)
                                                 self.__entries.append(entry)
 
                                                 if self.__artist != '':
-                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.ARTIST, str(self.__artist))
+                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.ARTIST, self.__artist)
                                                 if self.__album != '':
-                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.ALBUM, str(self.__album))
+                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.ALBUM, self.__album)
                                                 if self.__title != '':
-                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.TITLE, str(self.__title))
+                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.TITLE, self.__title)
                                                 if self.__tag != '':
-                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.GENRE, str(self.__tag))
+                                                        self.__db.entry_set(entry, RB.RhythmDBPropType.GENRE, self.__tag)
                                                 self.__db.entry_set(entry, RB.RhythmDBPropType.TRACK_NUMBER, self.__track)
                                                 self.__db.entry_set(entry, RB.RhythmDBPropType.DATE, self.__year)
                                                 self.__db.entry_set(entry, RB.RhythmDBPropType.DURATION, self.__time)
@@ -114,9 +114,9 @@ class SongsHandler(xml.sax.handler.ContentHandler):
                                                 self.__db.entry_set(entry, RB.RhythmDBPropType.RATING, self.__rating)
                                                 self.__db.commit()
 
-                                                self.__albumart[str(self.__artist) + str(self.__album)] = str(self.__art)
+                                                self.__albumart[self.__artist + self.__album] = self.__art
 
-                        except Exception,e: # This happens on duplicate uris being added
+                        except Exception as e: # This happens on duplicate uris being added
                                 sys.excepthook(*sys.exc_info())
                                 print("Couldn't add %s - %s" % (self.__artist, self.__title), e)
 
@@ -127,11 +127,11 @@ class SongsHandler(xml.sax.handler.ContentHandler):
                                 self.__text = re.sub(self.__re_auth, 'ssid='+self.__auth, self.__text);
                         self.__url = self.__text
                 elif name == 'artist':
-                        self.__artist = self.__text.encode('utf-8')
+                        self.__artist = self.__text
                 elif name == 'album':
-                        self.__album = self.__text.encode('utf-8')
+                        self.__album = self.__text
                 elif name == 'title':
-                        self.__title = self.__text.encode('utf-8')
+                        self.__title = self.__text
                 elif name == 'tag':
                         self.__tag = self.__text
                 elif name == 'track':
@@ -218,7 +218,7 @@ class AmpacheBrowser(RB.BrowserSource):
 #                        def cache_saved_cb(stream, result, data):
 #                                try:
 #                                        size = stream.write_finish(result)
-#                                except Exception, e:
+#                                except Exception as e:
 #                                        print("error writing file: %s" % (self.__songs_cache_filename))
 #                                        sys.excepthook(*sys.exc_info())
 #
@@ -231,7 +231,7 @@ class AmpacheBrowser(RB.BrowserSource):
 #                        def open_append_cb(file, result, data):
 #                                try:
 #                                        stream = file.append_to_finish(result)
-#                                except Exception, e:
+#                                except Exception as e:
 #                                        print("error opening file for writing %s" % (cache_filename))
 #                                        sys.excepthook(*sys.exc_info())
 #
@@ -246,7 +246,7 @@ class AmpacheBrowser(RB.BrowserSource):
                         def songs_downloaded_cb(file, result, data):
                                 try:
                                         (ok, contents, etag) = file.load_contents_finish(result)
-                                except Exception, e:
+                                except Exception as e:
                                         edlg = Gtk.MessageDialog(
                                                 None,
                                                 0,
@@ -284,7 +284,7 @@ class AmpacheBrowser(RB.BrowserSource):
 
                                 try:
                                         parser.feed(contents)
-                                except xml.sax.SAXParseException, e:
+                                except xml.sax.SAXParseException as e:
                                         print("error parsing songs: %s" % e)
 
                                 # remove enveloping <?xml> and <root> tags
@@ -295,7 +295,8 @@ class AmpacheBrowser(RB.BrowserSource):
                                 if new_offset < items:
                                         del lines[-2:]
 
-                                contents = ''.join(lines)
+                                for line in lines:
+                                        line = line.encode('utf-8')
 
 #                                data[1].append_to_async(
 #                                        Gio.FileCreateFlags.NONE,
@@ -304,7 +305,7 @@ class AmpacheBrowser(RB.BrowserSource):
 #                                        open_append_cb,
 #                                        contents)
 
-                                data[1].writelines(contents.encode('utf-8'))
+                                data[1].writelines(lines)
 
                                 print("append to cache file: %s" % (cache_filename))
 
@@ -334,7 +335,7 @@ class AmpacheBrowser(RB.BrowserSource):
 
 #                        cache_file = Gio.file_new_for_path(cache_filename)
 
-                        cache_file = open(cache_filename, "w")
+                        cache_file = open(cache_filename, 'wt', encoding='utf-8')
 
                         # download first chunk of songs
                         download_songs_chunk(0, cache_file)
@@ -376,7 +377,7 @@ class AmpacheBrowser(RB.BrowserSource):
                                                         self.__cache_directory,
                                                         ''.join([playlist[1], '.xml'])))
 
-                        except Exception, e:
+                        except Exception as e:
                                 print('no more playlists to process')
                                 return
 
@@ -384,7 +385,7 @@ class AmpacheBrowser(RB.BrowserSource):
                 def playlists_cb(file, result, param):
                         try:
                                 (ok, contents, etag) = file.load_contents_finish(result)
-                        except Exception, e:
+                        except Exception as e:
                                 edlg = Gtk.MessageDialog(
                                         None,
                                         0,
@@ -419,7 +420,7 @@ class AmpacheBrowser(RB.BrowserSource):
 
                         try:
                                 parser.feed(contents)
-                        except xml.sax.SAXParseException, e:
+                        except xml.sax.SAXParseException as e:
                                 print("error parsing playlists: %s" % e)
 
                         download_iterate()
@@ -430,7 +431,7 @@ class AmpacheBrowser(RB.BrowserSource):
                         def songs_loaded_cb(file, result, data):
                                 try:
                                         (ok, contents, etag) = file.load_contents_finish(result)
-                                except Exception, e:
+                                except Exception as e:
                                         RB.error_dialog(
                                                 title=_("Unable to load songs"),
                                                 message=_("Rhythmbox could not load the Ampache songs."))
@@ -450,7 +451,7 @@ class AmpacheBrowser(RB.BrowserSource):
                                                         self.__entries))
 
                                         parser.feed(contents)
-                                except xml.sax.SAXParseException, e:
+                                except xml.sax.SAXParseException as e:
                                         print("error parsing songs: %s" % e)
 
                                 self.__text = ''
@@ -501,7 +502,7 @@ class AmpacheBrowser(RB.BrowserSource):
                                                 True,
                                                 playlist_source)
 
-                        except Exception, e:
+                        except Exception as e:
                                 print('no more playlists to process')
                                 return
 
@@ -522,7 +523,7 @@ class AmpacheBrowser(RB.BrowserSource):
                 def handshake_cb(file, result, parser):
                         try:
                                 (ok, contents, etag) = file.load_contents_finish(result)
-                        except Exception, e:
+                        except Exception as e:
                                 edlg = Gtk.MessageDialog(
                                         None,
                                         0,
@@ -551,7 +552,7 @@ class AmpacheBrowser(RB.BrowserSource):
 
                         try:
                                 parser.feed(contents)
-                        except xml.sax.SAXParseException, e:
+                        except xml.sax.SAXParseException as e:
                                 print("error parsing handshake: %s" % e)
 
                         # convert handshake update time into datetime
@@ -589,8 +590,8 @@ class AmpacheBrowser(RB.BrowserSource):
                                         try:
                                                 if os.path.isfile(abs_filename):
                                                         os.unlink(abs_filename)
-                                        except Exception, e:
-                                                print e
+                                        except Exception as e:
+                                                print(e)
 
                                 # download playlists
                                 ampache_server_uri = \
@@ -641,8 +642,8 @@ class AmpacheBrowser(RB.BrowserSource):
 
                 # build handshake url
                 timestamp = int(time.time())
-                password = hashlib.sha256(self.__settings['password']).hexdigest()
-                authkey = hashlib.sha256(str(timestamp) + password).hexdigest()
+                password = hashlib.sha256(self.__settings['password'].encode('utf-8')).hexdigest()
+                authkey = hashlib.sha256((str(timestamp) + password).encode('utf-8')).hexdigest()
 
                 # execute handshake
                 ampache_server_uri = \
@@ -675,7 +676,7 @@ class AmpacheBrowser(RB.BrowserSource):
                         # create cache directory if it doesn't exist
                         cache_path = os.path.dirname(self.__songs_cache_filename)
                         if not os.path.exists(cache_path):
-                                os.mkdir(cache_path, 0700)
+                                os.mkdir(cache_path, 0o700)
 
                         self.update(False)
 
