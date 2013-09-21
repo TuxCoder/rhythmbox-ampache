@@ -22,9 +22,12 @@ class AmpacheEntryType(RB.RhythmDBEntryType):
                 return
 
 
-class Ampache(GObject.Object, Peas.Activatable):
+class AmpachePlugin(GObject.Object, Peas.Activatable):
         __gtype_name__ = 'AmpachePlugin'
         object = GObject.property(type=GObject.Object)
+
+        def __init__ (self):
+                super(AmpachePlugin, self).__init__()
 
         def do_activate(self):
                 shell = self.object
