@@ -1,10 +1,6 @@
 # -*- Mode: python; coding: utf-8; tab-width: 8; indent-tabs-mode: t; -*-
 # vim: expandtab shiftwidth=8 softtabstop=8 tabstop=8
 
-# todo:
-# - file append via write_async() results in garbage at the beginning of
-#   the data, temporary workaround: use python file I/O
-
 from gi.repository import RB
 from gi.repository import GObject, Gtk, Gio, GLib
 
@@ -91,10 +87,10 @@ class SongsHandler(xml.sax.handler.ContentHandler):
                 if name == 'song':
                         try:
                                 if self.__is_playlist:
-                                        self.__source.add_location(str(self.__url), -1)
+                                        self.__source.add_location(self.__url, -1)
                                 else:
                                         # add the track to the database if it doesn't exist
-                                        entry = self.__db.entry_lookup_by_location(str(self.__url))
+                                        entry = self.__db.entry_lookup_by_location(self.__url)
                                         if entry == None:
                                                 entry = RB.RhythmDBEntry.new(self.__db, self.__entry_type, self.__url)
                                                 self.__entries.append(entry)
@@ -215,33 +211,36 @@ class AmpacheBrowser(RB.BrowserSource):
 
                 def download_songs(uri, items, is_playlist, source, cache_filename):
 
-#                        def cache_saved_cb(stream, result, data):
-#                                try:
-#                                        size = stream.write_finish(result)
-#                                except Exception as e:
-#                                        print("error writing file: %s" % (self.__songs_cache_filename))
-#                                        sys.excepthook(*sys.exc_info())
-#
-#                                # close stream
-#                                stream.close(Gio.Cancellable())
-#
-#                                # change modification time to update time
-#                                update_time = int(mktime(self.__handshake_update.timetuple()))
-#                                os.utime(self.__songs_cache_filename, (update_time, update_time))
-#                        def open_append_cb(file, result, data):
-#                                try:
-#                                        stream = file.append_to_finish(result)
-#                                except Exception as e:
-#                                        print("error opening file for writing %s" % (cache_filename))
-#                                        sys.excepthook(*sys.exc_info())
-#
-#                                stream.write_async(
-#                                        data.encode('utf-8'),
-#                                        GLib.PRIORITY_DEFAULT,
-#                                        Gio.Cancellable(),
-#                                        cache_saved_cb,
-#                                        None)
-#                                print("write to cache file: %s" % (cache_filename))
+                        def cache_saved_cb(stream, result, data):
+                                try:
+                                        size = stream.write_bytes_finish(result)
+                                except Exception as e:
+                                        print("error writing file: %s" % (self.__songs_cache_filename))
+                                        sys.excepthook(*sys.exc_info())
+
+                                # close stream
+                                stream.close(Gio.Cancellable())
+
+                                # change modification time to newest time
+                                newest_time = int(mktime(self.__handshake_newest.timetuple()))
+                                os.utime(cache_filename, (newest_time, newest_time))
+                                # process next playlist
+                                download_iterate()
+
+                        def open_append_cb(file, result, data):
+                                try:
+                                        stream = file.append_to_finish(result)
+                                except Exception as e:
+                                        print("error opening file for writing %s" % (cache_filename))
+                                        sys.excepthook(*sys.exc_info())
+
+                                stream.write_bytes_async(
+                                        data,
+                                        GLib.PRIORITY_DEFAULT,
+                                        Gio.Cancellable(),
+                                        cache_saved_cb,
+                                        None)
+                                print("write to cache file: %s" % (cache_filename))
 
                         def songs_downloaded_cb(file, result, data):
                                 try:
@@ -295,29 +294,12 @@ class AmpacheBrowser(RB.BrowserSource):
                                 if new_offset < items:
                                         del lines[-2:]
 
-                                for line in lines:
-                                        line = line.encode('utf-8')
-
-#                                data[1].append_to_async(
-#                                        Gio.FileCreateFlags.NONE,
-#                                        GLib.PRIORITY_DEFAULT,
-#                                        Gio.Cancellable(),
-#                                        open_append_cb,
-#                                        contents)
-
-                                data[1].writelines(lines)
-
-                                print("append to cache file: %s" % (cache_filename))
-
-                                if new_offset >= items:
-                                        data[1].close()
-
-                                        # change modification time to newest time
-                                        newest_time = int(mktime(self.__handshake_newest.timetuple()))
-                                        os.utime(cache_filename, (newest_time, newest_time))
-
-                                        # process next playlist
-                                        download_iterate()
+                                data[1].append_to_async(
+                                        Gio.FileCreateFlags.NONE,
+                                        GLib.PRIORITY_DEFAULT,
+                                        Gio.Cancellable(),
+                                        open_append_cb,
+                                        GLib.Bytes.new(''.join(lines).encode('utf-8')))
 
                         def download_songs_chunk(offset, cache_file):
                                 ampache_server_uri = ''.join([uri,
@@ -333,9 +315,9 @@ class AmpacheBrowser(RB.BrowserSource):
                         self.__progress = 0
                         self.notify_status_changed()
 
-#                        cache_file = Gio.file_new_for_path(cache_filename)
+                        cache_file = Gio.file_new_for_path(cache_filename)
 
-                        cache_file = open(cache_filename, 'wt', encoding='utf-8')
+#                        cache_file = open(cache_filename, 'wt', encoding='utf-8')
 
                         # download first chunk of songs
                         download_songs_chunk(0, cache_file)
